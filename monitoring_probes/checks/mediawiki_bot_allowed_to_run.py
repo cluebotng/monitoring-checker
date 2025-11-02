@@ -1,9 +1,6 @@
 import logging
-import os
-from datetime import datetime
 
 import aiohttp
-from asyncmy import connect
 from prometheus_client import Gauge
 
 from monitoring_probes.checks import METRIC_PREFIX

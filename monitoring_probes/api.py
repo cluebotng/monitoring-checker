@@ -11,6 +11,7 @@ from prometheus_client import (
     PLATFORM_COLLECTOR,
 )
 
+from monitoring_probes.checks.external_metrics import get_file_based_metrics
 from monitoring_probes.checks.mediawiki_bot_allowed_to_run import (
     get_bot_administrator_allow_run,
 )
@@ -42,7 +43,10 @@ async def startup_event():
 @app.get("/metrics", response_class=PrometheusResponse)
 async def _render_metrics():
     recent_window_start_time = datetime.now() - timedelta(hours=24)
-    await asyncio.gather(
+    results = await asyncio.gather(
+        get_file_based_metrics(
+            "/data/project/cluebotng-monitoring/external-metrics/tools.test-damian"
+        ),
         get_last_user_contribution_time("ClueBot NG"),
         get_last_user_contribution_time("ClueBot III"),
         get_last_user_contribution_time("ClueBot NG Review Interface"),
@@ -51,8 +55,9 @@ async def _render_metrics():
         get_bot_administrator_allow_run("ClueBot NG"),
         get_bot_administrator_allow_run("ClueBot III"),
     )
-
-    return generate_latest()
+    file_metrics = results[0]
+    dynamic_metrics = generate_latest().decode("utf-8")
+    return f"{dynamic_metrics}\n{file_metrics}"
 
 
 @app.get("/health")

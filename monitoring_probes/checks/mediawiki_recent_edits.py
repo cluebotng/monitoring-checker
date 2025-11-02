@@ -2,7 +2,14 @@ import logging
 import os
 from datetime import datetime
 
+# asyncmy tries to lookup the current username using pwd.getpwuid to use as the default
+# since we don't have a proper user in the container this raises.. just patch it for now
+import getpass
+
+getpass.getuser = lambda: "yolo"
+
 from asyncmy import connect
+
 from prometheus_client import Gauge
 
 from monitoring_probes.checks import METRIC_PREFIX

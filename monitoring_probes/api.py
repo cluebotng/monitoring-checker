@@ -17,8 +17,8 @@ from monitoring_probes.checks.mediawiki_bot_allowed_to_run import (
 from monitoring_probes.checks.mediawiki_contribution_time import (
     get_last_user_contribution_time,
 )
-from monitoring_probes.checks.mediawiki_recent_edits import (
-    get_recent_user_contributions_count,
+from monitoring_probes.checks.mediawiki_edits import (
+    get_user_contributions_count,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,13 +41,15 @@ async def startup_event():
 
 @app.get("/metrics", response_class=PrometheusResponse)
 async def _render_metrics():
-    recent_window_start_time = datetime.now() - timedelta(hours=24)
+    recent_window_start = datetime.now() - timedelta(hours=24)
     await asyncio.gather(
         get_last_user_contribution_time("ClueBot NG"),
         get_last_user_contribution_time("ClueBot III"),
         get_last_user_contribution_time("ClueBot NG Review Interface"),
-        get_recent_user_contributions_count("ClueBot NG", recent_window_start_time),
-        get_recent_user_contributions_count("ClueBot III", recent_window_start_time),
+        get_user_contributions_count("ClueBot NG"),
+        get_user_contributions_count("ClueBot III"),
+        get_user_contributions_count("ClueBot NG", since_time=recent_window_start),
+        get_user_contributions_count("ClueBot III", since_time=recent_window_start),
         get_bot_administrator_allow_run("ClueBot NG"),
         get_bot_administrator_allow_run("ClueBot III"),
     )

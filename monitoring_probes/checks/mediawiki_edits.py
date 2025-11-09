@@ -16,17 +16,23 @@ from monitoring_probes.checks import METRIC_PREFIX
 
 logger = logging.getLogger(__name__)
 
-last_user_contribution_time = Gauge(
+recent_user_contributions_count = Gauge(
     f"{METRIC_PREFIX}_recent_user_contributions_count",
     "Number of recent user contributions",
+    ["domain", "username"],
+)
+
+user_contributions_count = Gauge(
+    f"{METRIC_PREFIX}_user_contributions_count",
+    "Number of user contributions",
     ["domain", "username"],
 )
 
 DOMAIN_TO_DATABASE_MAPPING = {"en.wikipedia.org": ("enwiki.labsdb", "enwiki_p")}
 
 
-async def get_recent_user_contributions_count(
-    username: str, since_time: datetime, domain: str = "en.wikipedia.org"
+async def get_user_contributions_count(
+    username: str, domain: str = "en.wikipedia.org", since_time: datetime | None = None
 ) -> None:
     if domain not in DOMAIN_TO_DATABASE_MAPPING:
         logger.error(f"Missing database mapping entry for {domain}")
@@ -40,6 +46,23 @@ async def get_recent_user_contributions_count(
         logger.error("Missing TOOL_REPLICA_USER / TOOL_REPLICA_PASSWORD")
         return
 
+    if since_time:
+        target_metric = recent_user_contributions_count
+        query = (
+            "SELECT COUNT(*) FROM `revision_userindex` "
+            "INNER JOIN `actor` ON `rev_actor` = `actor_id` "
+            "WHERE `actor_name` = %s AND `rev_timestamp` >= %s"
+        )
+        query_params = [username, since_time.strftime("%Y%m%d%H%M%S")]
+    else:
+        target_metric = user_contributions_count
+        query = (
+            "SELECT `user_editcount` FROM `user` "
+            "INNER JOIN `actor` ON `user_id` = `actor_user` "
+            "WHERE `actor_name` = %s"
+        )
+        query_params = [username]
+
     async with connect(
         host=database_host,
         user=database_user,
@@ -48,18 +71,6 @@ async def get_recent_user_contributions_count(
         echo=True,
     ) as connection:
         async with connection.cursor() as cursor:
-            await cursor.execute(
-                "SELECT COUNT(*) FROM `revision_userindex` "
-                "WHERE "
-                "`rev_actor` = (SELECT actor_id FROM actor WHERE `actor_name` = %s) "
-                "AND "
-                "`rev_timestamp` >= %s",
-                [
-                    username,
-                    since_time.isoformat(),
-                ],
-            )
+            await cursor.execute(query, query_params)
             if ret := await cursor.fetchone():
-                last_user_contribution_time.labels(
-                    domain=domain, username=username
-                ).set(ret[0])
+                target_metric.labels(domain=domain, username=username).set(ret[0])

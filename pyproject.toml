@@ -1,7 +1,7 @@
 [project]
 name = "monitoring-probes"
 version = "1.0"
-requires-python = ">=3.12,<3.14" # T408108
+requires-python = ">=3.12" # T408108
 dependencies = [
     "prometheus-client",
     "fastapi[standard] ; python_version >= '3.8'",

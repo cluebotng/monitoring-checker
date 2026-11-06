@@ -3,8 +3,8 @@ name = "monitoring-probes"
 version = "1.0"
 requires-python = ">=3.12" # T408108
 dependencies = [
-    "prometheus-client",
+    "prometheus-client (>=0.26.0,<0.27.0)",
     "fastapi[standard] ; python_version >= '3.8'",
-    "aiohttp",
+    "aiohttp (>=3.14.5,<4.0.0)",
     "asyncmy ; python_version <'4.0'",
 ]
